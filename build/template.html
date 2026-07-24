@@ -1,0 +1,942 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Greys Label Studio</title>
+<style>
+@font-face{
+  font-family:'TitleFont';
+  src:url(data:font/ttf;base64,__TITLE_B64__) format('truetype');
+}
+@font-face{
+  font-family:'LeagueSpartan';
+  font-weight:700;
+  src:url(data:font/woff2;base64,__SPARTAN_B64__) format('woff2');
+}
+:root{
+  --paper:#f4f1ec; --card:#ffffff; --ink:#221f1c; --muted:#8a8378;
+  --line:#e5e0d8; --accent:#a33b3b; --accent-ink:#ffffff;
+}
+*{box-sizing:border-box; margin:0; padding:0;}
+html,body{height:100%;}
+body{
+  font-family:-apple-system,'Segoe UI',Roboto,Arial,sans-serif;
+  background:var(--paper); color:var(--ink); font-size:14px;
+  display:flex; flex-direction:column; height:100vh; overflow:hidden;
+}
+header{
+  display:flex; align-items:center; gap:14px;
+  padding:10px 18px; background:var(--card); border-bottom:1px solid var(--line);
+  flex:0 0 auto;
+}
+header .brand{font-family:'LeagueSpartan',sans-serif; font-weight:700; font-size:20px; letter-spacing:3px;}
+header .brand small{font-family:inherit; font-size:12px; color:var(--muted); letter-spacing:3px; margin-left:8px; text-transform:uppercase;}
+header .spacer{flex:1;}
+.chip{font-size:11px; color:var(--muted); border:1px solid var(--line); border-radius:20px; padding:3px 10px; white-space:nowrap;}
+.chip.on{color:#3d7a3d; border-color:#bcd4bc;}
+.chip.off{color:#a33b3b; border-color:#dcc0c0;}
+button{
+  font:inherit; border:1px solid var(--line); background:var(--card); color:var(--ink);
+  padding:7px 14px; border-radius:8px; cursor:pointer; transition:.15s;
+}
+button:hover{border-color:#c9c2b6; background:#faf8f4;}
+button.primary{background:var(--accent); color:var(--accent-ink); border-color:var(--accent); font-weight:600;}
+button.primary:hover{filter:brightness(1.08);}
+button.ghost{border:none; background:transparent; color:var(--muted); padding:4px 8px;}
+button.ghost:hover{color:var(--ink); background:#f1ede6;}
+main{flex:1 1 auto; display:flex; min-height:0;}
+/* ---- sidebar ---- */
+#sidebar{
+  width:250px; flex:0 0 auto; background:var(--card); border-right:1px solid var(--line);
+  display:flex; flex-direction:column; min-height:0;
+}
+#sidebar h2{
+  font-size:11px; letter-spacing:2px; text-transform:uppercase; color:var(--muted);
+  padding:14px 16px 8px;
+}
+#productList{flex:1; overflow-y:auto; padding:0 8px 8px;}
+.prod{
+  display:flex; align-items:center; gap:10px; padding:9px 10px; border-radius:8px;
+  cursor:pointer; border:1px solid transparent;
+}
+.prod:hover{background:#f7f4ef;}
+.prod.active{background:#f3eee6; border-color:#e0d8ca;}
+.prod .dot{width:14px; height:14px; border-radius:50%; flex:0 0 auto; border:1px solid rgba(0,0,0,.15);}
+.prod .nm{flex:1; min-width:0;}
+.prod .nm b{display:block; font-size:13px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+.prod .nm span{font-size:11px; color:var(--muted);}
+#addBtn{margin:8px 16px 14px;}
+/* ---- editor ---- */
+#editor{
+  width:330px; flex:0 0 auto; overflow-y:auto; padding:16px;
+  background:#fbf9f5; border-right:1px solid var(--line);
+}
+fieldset{border:none; margin-bottom:18px;}
+legend{
+  font-size:11px; letter-spacing:2px; text-transform:uppercase; color:var(--muted);
+  margin-bottom:10px; font-weight:700;
+}
+.row{display:flex; gap:8px; margin-bottom:8px;}
+.f{flex:1; min-width:0;}
+.f label{display:block; font-size:10.5px; color:var(--muted); margin-bottom:3px; letter-spacing:.4px;}
+.f input,.f textarea{
+  width:100%; font:inherit; font-size:13px; padding:6px 8px; border:1px solid var(--line);
+  border-radius:6px; background:var(--card); color:var(--ink);
+}
+.f input:focus,.f textarea:focus{outline:none; border-color:#b9a98e; box-shadow:0 0 0 2px rgba(185,169,142,.2);}
+.f textarea{resize:vertical; min-height:84px; line-height:1.4;}
+.f input[type=color]{padding:2px; height:32px; cursor:pointer;}
+.rowActions{display:flex; gap:8px; margin-top:4px;}
+.modeRow{display:flex; gap:16px; margin-bottom:10px; flex-wrap:wrap;}
+.modeOpt{display:flex; gap:6px; align-items:center; font-size:12.5px; cursor:pointer; color:var(--ink);}
+.modeOpt input{accent-color:var(--accent);}
+.recipeInfo{font-size:11.5px; line-height:1.55; background:var(--card); border:1px solid var(--line);
+  border-radius:6px; padding:8px 10px; margin-bottom:8px; max-height:170px; overflow:auto;}
+.recipeInfo:empty{display:none;}
+.recipeInfo .ok{color:#3d7a3d;}
+.recipeInfo .bad{color:#a33b3b;}
+.recipeInfo .tot{border-top:1px solid var(--line); margin-top:5px; padding-top:5px; color:var(--ink); font-weight:600;}
+.hintSmall{font-size:11px; color:var(--muted); margin-top:6px; line-height:1.4;}
+.rowActions button{flex:1; font-size:12.5px;}
+.danger{color:#a33b3b;}
+/* ---- preview ---- */
+#stage{flex:1; min-width:0; display:flex; flex-direction:column; padding:18px; gap:12px; overflow-y:auto;}
+#previewWrap{
+  background:var(--card); border:1px solid var(--line); border-radius:12px; padding:16px;
+  box-shadow:0 8px 30px rgba(60,45,20,.06);
+}
+#labelCanvas{width:100%; height:auto; display:block; border:1px solid #eee;}
+#stage .hint{font-size:12px; color:var(--muted);}
+#toast{
+  position:fixed; bottom:22px; left:50%; transform:translateX(-50%) translateY(80px);
+  background:var(--ink); color:#fff; padding:10px 18px; border-radius:10px; font-size:13px;
+  opacity:0; transition:.3s; pointer-events:none; z-index:99;
+}
+#toast.show{opacity:1; transform:translateX(-50%) translateY(0);}
+@media (max-width:1100px){ #editor{width:290px;} #sidebar{width:210px;} }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="brand">GREYS<small>Label Studio</small></div>
+  <span id="dbStatus" class="chip">connecting…</span>
+  <div class="spacer"></div>
+  <button id="dbSaveBtn" class="primary">☁ Save to Database</button>
+  <button id="dlBtn">⬇ Download label PNG</button>
+  <button id="dlAllBtn">Download all</button>
+  <button id="saveBtn" title="Backup: downloads a copy of this page with your products baked in — works even with no internet.">💾 Backup copy</button>
+</header>
+
+<main>
+  <nav id="sidebar">
+    <h2>Products</h2>
+    <div id="productList"></div>
+    <button id="addBtn" class="primary">＋ New product</button>
+  </nav>
+
+  <section id="editor">
+    <fieldset>
+      <legend>Label</legend>
+      <div class="row"><div class="f"><label>Title (Capitalize like: Mixed Berry)</label><input id="Title"></div></div>
+      <div class="row"><div class="f"><label>Subtitle</label><input id="Subtitle"></div>
+        <div class="f" style="flex:0 0 90px;"><label>Size</label><input id="Unit"></div></div>
+      <div class="row">
+        <div class="f" style="flex:0 0 52px;"><label>Color</label><input type="color" id="HexColorPick"></div>
+        <div class="f"><label>Hex</label><input id="HexColor"></div>
+        <div class="f" style="flex:0 0 84px;"><label>Price</label><input id="Price"></div>
+      </div>
+      <div class="row"><div class="f"><label>UPC (12 digits — or 11 and the check digit is added)</label><input id="UPC">
+  <div id="upcWarn" class="hintSmall" style="color:#a33b3b;"></div></div></div>
+      <div class="row"><div class="f"><label>Ingredients</label><textarea id="Ingredients"></textarea></div></div>
+      <div class="row"><div class="f"><label>File name (Label_&lt;name&gt;.png)</label><input id="Filename"></div></div>
+      <div class="rowActions">
+        <button id="dupBtn">Duplicate</button>
+        <button id="delBtn" class="danger">Delete</button>
+      </div>
+    </fieldset>
+
+    <fieldset>
+      <legend>Nutrition Calculator</legend>
+      <div class="modeRow">
+        <label class="modeOpt"><input type="radio" name="nmode" id="modeAuto" checked> Estimate from ingredients</label>
+        <label class="modeOpt"><input type="radio" name="nmode" id="modeRecipe"> Enter exact recipe</label>
+      </div>
+      <div id="autoPane">
+        <div id="estInfo" class="recipeInfo"></div>
+        <div class="rowActions"><button id="estBtn" class="primary">Estimate → fill Nutrition Facts</button></div>
+        <div class="hintSmall">Works straight from the Ingredients list above — order matters (heaviest first, like label rules). Jams get standard fruit-to-sugar proportions; other products are weighted by list position, with pinch-sized amounts for herbs, spices, salt and pectin. USDA-style data, FDA label rounding. Estimates — double-check before printing.</div>
+      </div>
+      <div id="recipePane" style="display:none;">
+        <div class="row"><div class="f"><label>Batch recipe — one ingredient per line (e.g. “900 g strawberries”, “1 1/2 cups sugar”, “2 tbsp lemon juice”)</label>
+          <textarea id="Recipe" placeholder="900 g strawberries&#10;700 g sugar&#10;3 tbsp lemon juice&#10;2 tbsp pectin"></textarea></div></div>
+        <div class="row"><div class="f"><label>Finished batch weight after cooking down (blank = raw total)</label>
+          <input id="BatchYield" placeholder="e.g. 1400 g  /  50 oz  /  3.5 lb"></div></div>
+        <div id="recipeInfo" class="recipeInfo"></div>
+        <div class="rowActions"><button id="calcBtn" class="primary">Calculate → fill Nutrition Facts</button></div>
+        <div class="hintSmall">Exact mode: your real amounts, in grams, kg, oz, lb, cups, tbsp, tsp or whole fruits. Enter the cooked-down weight for best accuracy — evaporation concentrates everything. USDA-style data, FDA label rounding.</div>
+      </div>
+    </fieldset>
+
+    <fieldset>
+      <legend>Nutrition Facts</legend>
+      <div class="row"><div class="f"><label>Servings per container</label><input id="Servings"></div>
+        <div class="f" style="flex:0 0 110px;"><label>Serving size</label><input id="Size"></div></div>
+      <div class="row"><div class="f" style="flex:0 0 80px;"><label>Calories</label><input id="Cal"></div>
+        <div class="f"><label>Total fat</label><input id="Fat"></div>
+        <div class="f" style="flex:0 0 64px;"><label>DV%</label><input id="FatDV"></div></div>
+      <div class="row"><div class="f"><label>Sat. fat</label><input id="SatFat"></div>
+        <div class="f" style="flex:0 0 64px;"><label>DV%</label><input id="SatFatDV"></div>
+        <div class="f"><label>Trans fat</label><input id="TransFat"></div></div>
+      <div class="row"><div class="f"><label>Cholesterol</label><input id="Chol"></div>
+        <div class="f" style="flex:0 0 64px;"><label>DV%</label><input id="CholDV"></div>
+        <div class="f"><label>Sodium</label><input id="Sod"></div>
+        <div class="f" style="flex:0 0 64px;"><label>DV%</label><input id="SodDV"></div></div>
+      <div class="row"><div class="f"><label>Total carb.</label><input id="Carb"></div>
+        <div class="f" style="flex:0 0 64px;"><label>DV%</label><input id="CarbDV"></div>
+        <div class="f"><label>Fiber</label><input id="Fiber"></div>
+        <div class="f" style="flex:0 0 64px;"><label>DV%</label><input id="FiberDV"></div></div>
+      <div class="row"><div class="f"><label>Total sugars</label><input id="Sug"></div>
+        <div class="f"><label>Added sugars</label><input id="AddSug"></div>
+        <div class="f" style="flex:0 0 64px;"><label>DV%</label><input id="AddSugDV"></div></div>
+      <div class="row"><div class="f"><label>Protein</label><input id="Prot"></div>
+        <div class="f"><label>Vit. D</label><input id="VitD"></div>
+        <div class="f"><label>Calcium</label><input id="Calc"></div></div>
+      <div class="row"><div class="f"><label>Iron</label><input id="Iron"></div>
+        <div class="f"><label>Potassium</label><input id="Potas"></div><div class="f"></div></div>
+    </fieldset>
+  </section>
+
+  <section id="stage">
+    <div id="previewWrap"><canvas id="labelCanvas" width="1800" height="600"></canvas></div>
+    <div class="hint">Live preview · exports at 1800 × 600 px. Products load from the shared database and “Save to Database” (passcode) makes your edits visible on every computer. “Backup copy” downloads a standalone copy of this page that works with no internet.</div>
+  </section>
+</main>
+
+<div id="toast"></div>
+
+<script type="application/json" id="productData">__PRODUCTS_JSON__</script>
+
+<script>
+"use strict";
+/* ============ data ============ */
+const FIELDS = ["Filename","Title","Subtitle","HexColor","Price","Unit","Ingredients","UPC","Recipe","BatchYield",
+ "Servings","Size","Cal","Fat","FatDV","SatFat","SatFatDV","TransFat","Chol","CholDV","Sod","SodDV",
+ "Carb","CarbDV","Fiber","FiberDV","Sug","AddSug","AddSugDV","Prot","VitD","Calc","Iron","Potas"];
+function upcCheck(d11){
+  let odd = 0, even = 0;
+  for(let i = 0; i < 11; i++){ const n = +d11[i]; if(i % 2 === 0) odd += n; else even += n; }
+  return (10 - ((odd*3 + even) % 10)) % 10;
+}
+function normUPC(v){
+  let d = String(v||"").replace(/\D/g,"");
+  if(d.length >= 12) return d.slice(0,12);       // full 12-digit code: keep exactly as entered
+  d = d.padStart(11,"0");                        // keep leading zeros — Excel strips these from CSVs
+  return d + upcCheck(d);                        // 11 or fewer digits: append computed check digit
+}
+function upcCheckWarning(v){
+  const d = String(v||"").replace(/\D/g,"");
+  if(d.length !== 12) return null;
+  const want = upcCheck(d.slice(0,11));
+  return (+d[11] === want) ? null : "⚠ last digit should be " + want + " — scanners will reject this code";
+}
+let products = JSON.parse(document.getElementById('productData').textContent);
+products.forEach(p => {
+  if(!p.Unit) p.Unit = "6 oz.";
+  if(p.Recipe === undefined) p.Recipe = "";
+  if(p.BatchYield === undefined) p.BatchYield = "";
+  if(!p.NutriMode) p.NutriMode = "auto";
+  p.UPC = normUPC(p.UPC);
+});
+
+/* ============ ingredient nutrition database ============ */
+/* v = per 100 g: [cal, fat g, satFat g, chol mg, sodium mg, carb g, fiber g, sugar g, protein g, K mg, Ca mg, Fe mg]
+   cup = grams per US cup · each = grams per whole piece · add = sugars count as Added Sugars */
+const ING_DB = [
+ {a:["brown sugar"],                    cup:220, add:true,  v:[380,0,0,0,28,98,0,97,0.1,133,83,0.7]},
+ {a:["cane sugar","granulated sugar","sugar"], cup:200, add:true, v:[387,0,0,0,1,100,0,100,0,2,1,0]},
+ {a:["honey"],                          cup:339, add:true,  v:[304,0,0,0,4,82.4,0.2,82.1,0.3,52,6,0.4]},
+ {a:["strawberr"],                      cup:150, each:12,   v:[32,0.3,0,0,1,7.7,2,4.9,0.7,153,16,0.4]},
+ {a:["blueberr"],                       cup:148,            v:[57,0.3,0,0,1,14.5,2.4,10,0.7,77,6,0.3]},
+ {a:["blackberr"],                      cup:144,            v:[43,0.5,0,0,1,9.6,5.3,4.9,1.4,162,29,0.6]},
+ {a:["raspberr"],                       cup:123,            v:[52,0.7,0,0,1,11.9,6.5,4.4,1.2,151,25,0.7]},
+ {a:["peach"],                          cup:154, each:150,  v:[39,0.3,0,0,0,9.5,1.5,8.4,0.9,190,6,0.3]},
+ {a:["mango"],                          cup:165, each:200,  v:[60,0.4,0,0,1,15,1.6,13.7,0.8,168,11,0.2]},
+ {a:["pineapple"],                      cup:165,            v:[50,0.1,0,0,1,13.1,1.4,9.9,0.5,109,13,0.3]},
+ {a:["fig"],                            cup:149, each:50,   v:[74,0.3,0,0,1,19.2,2.9,16.3,0.8,232,35,0.4]},
+ {a:["apple"],                          cup:125, each:180,  v:[52,0.2,0,0,1,13.8,2.4,10.4,0.3,107,6,0.1]},
+ {a:["dark cherr","cherr"],             cup:154,            v:[63,0.2,0,0,0,16,2.1,12.8,1.1,222,13,0.4]},
+ {a:["jalapeno","jalapeño"],            cup:90,  each:14,   v:[29,0.4,0,0,3,6.5,2.8,4.1,0.9,248,12,0.3]},
+ {a:["bell pepper"],                    cup:149, each:120,  v:[26,0.3,0,0,4,6,2.1,4.2,1,211,7,0.4]},
+ {a:["lemon zest"],                     cup:96,  typ:0.010, v:[47,0.3,0,0,6,16,10.6,4.2,1.5,160,134,0.8]},
+ {a:["lime zest"],                      cup:96,  typ:0.010, v:[47,0.3,0,0,6,16,10.6,4.2,1.5,160,134,0.8]},
+ {a:["lemon juice","lemon"],            cup:244, typ:0.030, v:[22,0.2,0,0,1,6.9,0.3,2.5,0.4,103,6,0.1]},
+ {a:["lime juice","lime"],              cup:242, typ:0.030, v:[25,0.1,0,0,2,8.4,0.4,1.7,0.4,117,14,0.1]},
+ {a:["pectin"],                         cup:145, typ:0.015, v:[325,0,0,0,100,90,9,0,0,8,7,0]},
+ {a:["tajin"],                          cup:292, typ:0.010, v:[10,0,0,0,21000,20,10,0,0,0,0,0]},
+ {a:["salt"],                           cup:292, typ:0.008, v:[0,0,0,0,38758,0,0,0,0,8,24,0.3]},
+ {a:["cinnamon"],                       cup:125, typ:0.005, v:[247,1.2,0.3,0,10,80.6,53,2.2,4,431,1002,8.3]},
+ {a:["basil"],                          cup:24,  typ:0.020, v:[23,0.6,0,0,4,2.7,1.6,0.3,3.2,295,177,3.2]},
+ {a:["dill"],                           cup:9,   typ:0.020, v:[43,1.1,0.1,0,61,7,2.1,0,3.5,738,208,6.6]},
+ {a:["tarragon"],                       cup:24,  typ:0.020, v:[50,1.1,0.2,0,10,7,2,0,3.4,300,180,3]},
+ {a:["parsley"],                        cup:60,  typ:0.015, v:[36,0.8,0,0,56,6.3,3.3,0.9,3,554,138,6.2]},
+ {a:["chive"],                          cup:48,  typ:0.015, v:[30,0.7,0,0,3,4.4,2.5,1.9,3.3,296,92,1.6]},
+ {a:["garlic powder"],                  cup:155, typ:0.010, v:[331,0.7,0.2,0,60,72.7,9,2.4,16.6,1193,79,5.7]},
+ {a:["onion powder"],                   cup:115, typ:0.010, v:[341,1,0.2,0,54,79.1,15.2,6.6,10.4,985,384,3.9]},
+ {a:["paprika"],                        cup:110, typ:0.005, v:[282,12.9,2.1,0,68,53.9,34.9,10.3,14.1,2280,229,21.1]},
+ {a:["coriander"],                      cup:86,  typ:0.005, v:[298,17.8,1,0,35,55,41.9,0,12.4,1267,709,16.3]},
+ {a:["mayonnaise","mayo"],              cup:220,            v:[680,75,12,42,635,0.6,0,0.6,1,20,8,0.2]},
+ {a:["sour cream"],                     cup:230,            v:[198,19.4,10.1,52,70,4.6,0,3.5,2.4,141,110,0.1]},
+ {a:["buttermilk"],                     cup:245,            v:[40,0.9,0.5,4,105,4.8,0,4.8,3.3,151,116,0]},
+ {a:["canola oil","vegetable oil","oil"], cup:218,          v:[884,100,7.4,0,0,0,0,0,0,0,0,0]},
+ {a:["butter"],                         cup:227,            v:[717,81,51,215,640,0.1,0,0.1,0.9,24,24,0]},
+ {a:["flour"],                          cup:125,            v:[364,1,0.2,0,2,76.3,2.7,0.3,10.3,107,15,4.6]},
+ {a:["white wine","wine"],              cup:235, typ:0.050, v:[82,0,0,0,5,2.6,0,1,0.1,71,9,0.3]},
+ {a:["balsamic vinegar","balsamic"],    cup:255, typ:0.050, v:[88,0,0,0,23,17,0,15,0.5,112,27,0.7]},
+ {a:["apple cider vinegar"],            cup:239, typ:0.030, v:[21,0,0,0,5,0.9,0,0.4,0,73,7,0.2]},
+ {a:["vinegar"],                        cup:238, typ:0.030, v:[18,0,0,0,2,0,0,0,0,2,6,0]},
+ {a:["mustard seed"],                   cup:176,            v:[508,36,1.9,0,13,28,12,6.8,26,738,266,9.2]},
+ {a:["seed mustard","spicy mustard","dijon","mustard"], cup:250, v:[66,4,0.2,0,1100,6,3,1,4,152,63,1.5]},
+ {a:["worcestershire"],                 cup:275, typ:0.010, v:[78,0,0,0,980,19.5,0,10,0,800,107,5.3]},
+ {a:["crumble","streusel"],             cup:120, typ:0.100, add:true, v:[487,27.4,17.1,72,223,58.1,0.9,32.5,3.8,88,41,1.8]},
+];
+function matchIngredient(name){
+  const n = " " + name.toLowerCase().trim() + " ";
+  let best = null, bestLen = 0;
+  for(const e of ING_DB){
+    for(const alias of e.a){
+      if(alias.length > bestLen && n.includes(alias)){ best = e; bestLen = alias.length; }
+    }
+  }
+  return best;
+}
+/* Estimate ingredient proportions from the label's Ingredients list.
+   List order = descending weight (labeling rules). Minor ingredients (herbs,
+   spices, salt, pectin…) get their typical small fractions; the rest is split
+   among the major ingredients. Jam-type products use the standard preserve
+   ratio: added-sugar ingredients ≈ 58% of the finished jar. */
+const SUGAR_SHARE = 0.58;
+function isJamLike(p){ return /jam|jelly|preserve|cobbler|marmalade/i.test((p.Title||"") + " " + (p.Subtitle||"")); }
+function parseIngredientList(text){
+  const flat = String(text||"").replace(/\([^)]*\)/g, "");   // drop sub-ingredient parentheses
+  return flat.split(/[,.;]+/).map(s => s.trim()).filter(Boolean);
+}
+/* --- exact-recipe parsing (grams/kg/oz/lb/cup/tbsp/tsp/ml, fractions, whole fruits) --- */
+const UNITS = {g:1, gram:1, grams:1, kg:1000, oz:28.35, ounce:28.35, ounces:28.35,
+  lb:453.6, lbs:453.6, pound:453.6, pounds:453.6, ml:"ml", l:"l", liter:"l", litre:"l",
+  cup:"cup", cups:"cup", c:"cup", tbsp:"tbsp", tablespoon:"tbsp", tablespoons:"tbsp", tb:"tbsp",
+  tsp:"tsp", teaspoon:"tsp", teaspoons:"tsp", pinch:"pinch", pinches:"pinch"};
+function parseQty(tokens){
+  let qty = 0, used = 0;
+  for(const t of tokens){
+    let m;
+    if((m = t.match(/^(\d+)\/(\d+)$/))){ qty += (+m[1])/(+m[2]); used++; }
+    else if(/^\d+([.,]\d+)?$/.test(t)){ qty += parseFloat(t.replace(",", ".")); used++; }
+    else break;
+  }
+  return used ? {qty, used} : null;
+}
+function parseRecipe(text){
+  const items = [];
+  for(let raw of String(text||"").split(/\n/)){
+    let line = raw.trim();
+    if(!line) continue;
+    line = line.replace(/^[-•*]\s*/, "").replace(/(\d)([a-zA-Z])/g, "$1 $2");
+    const tokens = line.split(/[\s,]+/).filter(Boolean);
+    const q = parseQty(tokens);
+    if(!q){ items.push({raw, ok:false, msg:"no amount — start the line with a number"}); continue; }
+    let rest = tokens.slice(q.used);
+    let unit = null;
+    if(rest.length && UNITS[rest[0].toLowerCase().replace(/\.$/,"")] !== undefined){
+      unit = UNITS[rest[0].toLowerCase().replace(/\.$/,"")]; rest = rest.slice(1);
+      if(rest[0] && /^of$/i.test(rest[0])) rest = rest.slice(1);
+    }
+    const name = rest.join(" ");
+    if(!name){ items.push({raw, ok:false, msg:"missing ingredient name"}); continue; }
+    const e = matchIngredient(name);
+    if(!e){ items.push({raw, ok:false, msg:"“" + name + "” not recognized — it will be skipped"}); continue; }
+    let grams = null;
+    const cupW = e.cup || 240;
+    if(typeof unit === "number") grams = q.qty * unit;
+    else if(unit === "cup") grams = q.qty * cupW;
+    else if(unit === "tbsp") grams = q.qty * cupW / 16;
+    else if(unit === "tsp") grams = q.qty * cupW / 48;
+    else if(unit === "ml") grams = q.qty * cupW / 236.6;
+    else if(unit === "l") grams = q.qty * cupW / 236.6 * 1000;
+    else if(unit === "pinch") grams = q.qty * 0.3;
+    else if(unit === null && e.each) grams = q.qty * e.each;
+    else { items.push({raw, ok:false, msg:"add a unit (g, oz, cup, tbsp…)"}); continue; }
+    items.push({raw, ok:true, grams, e});
+  }
+  const totalG = items.reduce((s,i) => s + (i.ok ? i.grams : 0), 0);
+  return {items, totalG};
+}
+function parseWeight(str){
+  if(!str || !str.trim()) return null;
+  const m = str.trim().toLowerCase().replace(/(\d)([a-z])/g,"$1 $2")
+    .match(/^([\d.,\/\s]+?)\s*(g|grams?|kg|oz|ounces?|lbs?|pounds?)\.?$/);
+  if(!m) return null;
+  const q = parseQty(m[1].split(/\s+/).filter(Boolean));
+  if(!q) return null;
+  const mult = {g:1, gram:1, grams:1, kg:1000, oz:28.35, ounce:28.35, ounces:28.35, lb:453.6, lbs:453.6, pound:453.6, pounds:453.6}[m[2]];
+  return q.qty * mult;
+}
+function estimateShares(p){
+  const names = parseIngredientList(p.Ingredients);
+  const matched = [], missing = [];
+  for(const n of names){
+    const e = matchIngredient(n);
+    if(e) matched.push({name:n, e}); else missing.push(n);
+  }
+  if(!matched.length) return {shares:[], missing};
+  const minors = matched.filter(m => m.e.typ);
+  const majors = matched.filter(m => !m.e.typ);
+  let minorSum = minors.reduce((s,m) => s + m.e.typ, 0);
+  if(minorSum > 0.35){ const k = 0.35/minorSum; minors.forEach(m => m.frac = m.e.typ*k); minorSum = 0.35; }
+  else minors.forEach(m => m.frac = m.e.typ);
+  let rest = 1 - minorSum;
+  if(!majors.length){                                  // only minors listed: scale them up to 100%
+    minors.forEach(m => m.frac = m.frac / minorSum);
+  } else if(isJamLike(p) && majors.some(m => m.e.add) && majors.some(m => !m.e.add)){
+    const sweet = majors.filter(m => m.e.add), fruit = majors.filter(m => !m.e.add);
+    const sweetShare = Math.min(SUGAR_SHARE, rest - 0.05*fruit.length);
+    let w = sweet.map((m,i) => 1/(i+1)), tw = w.reduce((a,b)=>a+b,0);
+    sweet.forEach((m,i) => m.frac = sweetShare * w[i]/tw);
+    w = fruit.map((m,i) => 1/(i+1)); tw = w.reduce((a,b)=>a+b,0);
+    fruit.forEach((m,i) => m.frac = (rest - sweetShare) * w[i]/tw);
+  } else {
+    const w = majors.map((m,i) => 1/(i+1)), tw = w.reduce((a,b)=>a+b,0);
+    majors.forEach((m,i) => m.frac = rest * w[i]/tw);
+  }
+  return {shares: matched, missing};
+}
+/* --- FDA-style label rounding --- */
+function rCal(x){ return x < 5 ? 0 : x <= 50 ? Math.round(x/5)*5 : Math.round(x/10)*10; }
+function rFat(x){ return x < 0.5 ? 0 : x < 5 ? Math.round(x*2)/2 : Math.round(x); }
+function rG(x){ return x < 0.5 ? 0 : Math.max(1, Math.round(x)); }
+function rChol(x){ return x < 2 ? 0 : Math.round(x/5)*5; }
+function rNa(x){ return x < 5 ? 0 : x <= 140 ? Math.round(x/5)*5 : Math.round(x/10)*10; }
+function rPct(x){ return Math.round(x); }
+function rVitPct(x){ return x < 1 ? 0 : x <= 10 ? Math.round(x/2)*2 : x <= 50 ? Math.round(x/5)*5 : Math.round(x/10)*10; }
+const DV = {fat:78, sat:20, chol:300, na:2300, carb:275, fiber:28, addsug:50, K:4700, Ca:1300, Fe:18};
+function servingGrams(p){
+  const m = String(p.Size||"").match(/\(([\d.]+)\s*g\)/i);
+  return m ? parseFloat(m[1]) : 20;
+}
+function jarGrams(p){
+  const m = String(p.Unit||"").match(/([\d.]+)\s*oz/i);
+  return m ? parseFloat(m[1]) * 28.35 : 170;
+}
+function newTotals(){ return {cal:0, fat:0, sat:0, chol:0, na:0, carb:0, fiber:0, sug:0, addsug:0, prot:0, K:0, Ca:0, Fe:0}; }
+function addToTotals(t, e, f){   // f = grams of this ingredient per serving / 100
+  const v = e.v;
+  t.cal += v[0]*f; t.fat += v[1]*f; t.sat += v[2]*f; t.chol += v[3]*f; t.na += v[4]*f;
+  t.carb += v[5]*f; t.fiber += v[6]*f; t.sug += v[7]*f; t.prot += v[8]*f;
+  t.K += v[9]*f; t.Ca += v[10]*f; t.Fe += v[11]*f;
+  if(e.add) t.addsug += v[7]*f;
+}
+function calcNutrition(p){          // auto mode: shares of the finished jar
+  const {shares} = estimateShares(p);
+  if(!shares.length) return null;
+  const sg = servingGrams(p);
+  const t = newTotals();
+  for(const m of shares) addToTotals(t, m.e, (m.frac || 0) * sg / 100);
+  return finishPanel(p, t);
+}
+function calcRecipe(p){             // exact mode: real batch amounts
+  const R = parseRecipe(p.Recipe);
+  const okItems = R.items.filter(i => i.ok);
+  if(!okItems.length) return null;
+  const finished = parseWeight(p.BatchYield) || R.totalG;
+  const per = servingGrams(p) / finished;
+  const t = newTotals();
+  for(const i of okItems) addToTotals(t, i.e, i.grams * per / 100);
+  return finishPanel(p, t);
+}
+function finishPanel(p, t){
+  // %DVs are computed from the rounded label amounts, per FDA practice
+  const fat = rFat(t.fat), sat = rFat(t.sat), chol = rChol(t.chol), na = rNa(t.na),
+        carb = rG(t.carb), fiber = rG(t.fiber), addsug = rG(t.addsug);
+  return {
+    Servings: Math.max(1, Math.round(jarGrams(p)/servingGrams(p))) + " servings per container",
+    Cal: String(rCal(t.cal)),
+    Fat: fat + "g",            FatDV: rPct(fat/DV.fat*100) + "%",
+    SatFat: sat + "g",         SatFatDV: rPct(sat/DV.sat*100) + "%",
+    TransFat: "0g",
+    Chol: chol + "mg",         CholDV: rPct(chol/DV.chol*100) + "%",
+    Sod: na + "mg",            SodDV: rPct(na/DV.na*100) + "%",
+    Carb: carb + "g",          CarbDV: rPct(carb/DV.carb*100) + "%",
+    Fiber: fiber + "g",        FiberDV: rPct(fiber/DV.fiber*100) + "%",
+    Sug: rG(t.sug) + "g",
+    AddSug: addsug + "g",      AddSugDV: rPct(addsug/DV.addsug*100) + "%",
+    Prot: rG(t.prot) + "g",
+    VitD: "0%",
+    Calc: rVitPct(t.Ca/DV.Ca*100) + "%",
+    Iron: rVitPct(t.Fe/DV.Fe*100) + "%",
+    Potas: rVitPct(t.K/DV.K*100) + "%",
+  };
+}
+let cur = 0;
+
+const QR = new Image();
+QR.src = "data:image/png;base64,__QR_B64__";
+
+const cv = document.getElementById('labelCanvas');
+const ctx = cv.getContext('2d');
+
+/* ============ helpers ============ */
+function $(id){ return document.getElementById(id); }
+function toast(msg){
+  const t = $('toast'); t.textContent = msg; t.classList.add('show');
+  clearTimeout(t._h); t._h = setTimeout(()=>t.classList.remove('show'), 2200);
+}
+function setLS(c, px){ try{ c.letterSpacing = px + "px"; }catch(e){} }
+function wrapText(c, text, maxW){
+  const words = String(text||"").split(/\s+/).filter(Boolean);
+  const lines = []; let line = "";
+  for(const w of words){
+    const test = line ? line + " " + w : w;
+    if(c.measureText(test).width > maxW && line){ lines.push(line); line = w; }
+    else line = test;
+  }
+  if(line) lines.push(line);
+  return lines;
+}
+
+/* ============ UPC-A barcode ============ */
+const L = ["0001101","0011001","0010011","0111101","0100011","0110001","0101111","0111011","0110111","0001011"];
+function upcDigits(raw){
+  return normUPC(raw);   // 12-digit codes render exactly as entered; shorter ones get the check digit appended
+}
+function drawBarcode(c, code, x, y, w){
+  const d = upcDigits(code);
+  let modules = "101";
+  for(let i=0;i<6;i++) modules += L[+d[i]];
+  modules += "01010";
+  for(let i=6;i<12;i++) modules += L[+d[i]].replace(/[01]/g, m => m==="0"?"1":"0");
+  modules += "101";
+  const quiet = 9;
+  const mw = w / (modules.length + quiet*2);
+  const barH = 104, guardExtra = 14;
+  // guard positions (module indices) that get the longer bars
+  const isGuard = i => (i<3) || (i>=45 && i<50) || (i>=92);
+  c.fillStyle = "#000";
+  for(let i=0;i<modules.length;i++){
+    if(modules[i]==="1"){
+      const h = barH + (isGuard(i) ? guardExtra : 0);
+      c.fillRect(x + (quiet+i)*mw, y, Math.ceil(mw), h);
+    }
+  }
+  c.font = "600 26px Arial, sans-serif"; setLS(c, 6);
+  c.textAlign = "center"; c.textBaseline = "alphabetic";
+  c.fillText(d, x + w/2, y + barH + guardExtra + 28);
+  setLS(c, 0);
+}
+
+/* ============ nutrition panel (offscreen) ============ */
+function nutritionCanvas(p){
+  const W = 310, PAD = 12;
+  const c2 = document.createElement('canvas');
+  c2.width = W; c2.height = 1200;
+  const g = c2.getContext('2d');
+  g.fillStyle = "#fff"; g.fillRect(0,0,W,1200);
+  g.fillStyle = "#000"; g.textBaseline = "alphabetic";
+  const F = (s,b)=> (b?"700 ":"400 ") + s + "px Arial, sans-serif";
+  let y = PAD;
+  g.textAlign = "left";
+  g.font = "800 33px Arial, sans-serif"; y += 30; g.fillText("Nutrition Facts", PAD, y); y += 12;
+  g.font = F(13); y += 13; g.fillText(p.Servings||"", PAD, y); y += 7;
+  g.font = F(13,true); y += 13; g.fillText("Serving Size", PAD, y);
+  g.textAlign = "right"; g.fillText(p.Size||"", W-PAD, y); g.textAlign = "left"; y += 10;
+  g.fillRect(PAD, y, W-PAD*2, 8); y += 8;
+  g.font = F(26,true); y += 34; g.fillText("Calories", PAD, y);
+  g.font = F(40,true); g.textAlign = "right"; g.fillText(p.Cal||"", W-PAD, y); g.textAlign = "left"; y += 10;
+  g.fillRect(PAD, y, W-PAD*2, 5); y += 5;
+  g.font = F(12,true); y += 16; g.textAlign = "right"; g.fillText("% Daily Value *", W-PAD, y); g.textAlign = "left"; y += 6;
+  g.fillRect(PAD, y, W-PAD*2, 2); y += 2;
+  const rows = [
+    ["Total Fat", p.Fat, p.FatDV, true, 0],
+    ["Saturated Fat", p.SatFat, p.SatFatDV, false, 1],
+    ["Trans Fat", p.TransFat, "", false, 1],
+    ["Cholesterol", p.Chol, p.CholDV, true, 0],
+    ["Sodium", p.Sod, p.SodDV, true, 0],
+    ["Total Carb.", p.Carb, p.CarbDV, true, 0],
+    ["Dietary Fiber", p.Fiber, p.FiberDV, false, 1],
+    ["Total Sugars", p.Sug, "", false, 1],
+    ["Incl. " + (p.AddSug||"0g") + " Added Sugars", "", p.AddSugDV, false, 2],
+    ["Protein", p.Prot, "", true, 0],
+  ];
+  for(const [name, amt, dv, bold, ind] of rows){
+    g.font = F(15, bold); y += 19;
+    g.fillText((name + " " + (amt||"")).trim(), PAD + ind*14, y);
+    if(dv){ g.font = F(15,true); g.textAlign = "right"; g.fillText(dv, W-PAD, y); g.textAlign = "left"; }
+    y += 6; g.fillRect(PAD, y, W-PAD*2, 1); y += 1;
+  }
+  y += 3; g.fillRect(PAD, y, W-PAD*2, 8); y += 8;
+  const vits = [["Vit. D", p.VitD],["Calc.", p.Calc],["Iron", p.Iron],["Potas.", p.Potas]];
+  g.font = F(13);
+  for(let i=0;i<vits.length;i+=2){
+    y += 17;
+    g.fillText(vits[i][0]+" "+(vits[i][1]||"")+"  •  "+vits[i+1][0]+" "+(vits[i+1][1]||""), PAD, y);
+  }
+  y += 8;
+  g.font = F(10.5);
+  const note = "* The % Daily Value (DV) tells you how much a nutrient in a serving of food contributes to a daily diet.";
+  for(const line of wrapText(g, note, W-PAD*2)){ y += 12; g.fillText(line, PAD, y); }
+  y += PAD;
+  const out = document.createElement('canvas');
+  out.width = W; out.height = y;
+  const og = out.getContext('2d');
+  og.drawImage(c2, 0, 0, W, y, 0, 0, W, y);
+  og.strokeStyle = "#000"; og.lineWidth = 3;
+  og.strokeRect(1.5, 1.5, W-3, y-3);
+  return out;
+}
+
+/* ============ small caps title ============ */
+function drawSmallCaps(c, text, cx, baseY, big, small, color){
+  const fb = "400 " + big + "px TitleFont, Arial, sans-serif";
+  const fs = "400 " + small + "px TitleFont, Arial, sans-serif";
+  const parts = [];
+  let total = 0;
+  for(const ch of String(text||"")){
+    const isBig = (ch === ch.toUpperCase()) || !/[a-z]/i.test(ch);
+    const f = isBig ? fb : fs;
+    c.font = f;
+    const s = ch.toUpperCase();
+    const w = c.measureText(s).width + 2;
+    parts.push([s, f, w]); total += w;
+  }
+  let x = cx - total/2;
+  c.fillStyle = color; c.textAlign = "left"; c.textBaseline = "alphabetic";
+  for(const [s,f,w] of parts){ c.font = f; c.fillText(s, x, baseY); x += w; }
+}
+
+/* ============ label renderer ============ */
+function renderLabel(c, p){
+  const W = 1800, H = 600;
+  const col = p.HexColor || "#333";
+  c.save();
+  c.fillStyle = "#fff"; c.fillRect(0,0,W,H);
+  c.fillStyle = col; c.fillRect(0,0,W,7);
+  c.fillStyle = col; c.fillRect(0,H-30,W,30);
+
+  /* ----- left ----- */
+  const lx = 250;
+  c.fillStyle = "#666"; c.textAlign = "center"; c.textBaseline = "alphabetic";
+  c.font = "600 19px Arial, sans-serif"; setLS(c, 6);
+  c.fillText("HOUSEMADE BY", lx, 56); setLS(c, 0);
+  c.fillStyle = "#000"; c.font = "700 29px Arial, sans-serif";
+  c.fillText("GREYS FINE CHEESE", lx, 95);
+  c.fillStyle = "#333"; c.font = "400 24px Arial, sans-serif";
+  c.fillText("709 S. Mendenhall", lx, 128);
+  c.fillText("Memphis, TN 38117", lx, 158);
+  c.fillStyle = "#000"; c.font = "300 90px Arial, sans-serif";
+  c.fillText(p.Price || "", lx, 268);
+  drawBarcode(c, p.UPC, 55, 350, 390);
+
+  /* ----- center ----- */
+  const cx = 800;
+  c.fillStyle = "#000"; c.textAlign = "center";
+  c.font = "700 66px LeagueSpartan, Arial, sans-serif"; setLS(c, 14);
+  c.fillText("GREYS", cx + 7, 100); setLS(c, 0);
+  const hasSub = !!(p.Subtitle && p.Subtitle.trim());
+  drawSmallCaps(c, p.Title, cx, hasSub ? 248 : 272, 100, 74, col);
+  if(hasSub){
+    c.fillStyle = col; c.font = "400 58px TitleFont, Arial, sans-serif";
+    c.textAlign = "center"; c.fillText(p.Subtitle, cx, 328);
+  }
+  c.textAlign = "center";
+  c.fillStyle = col;
+  c.fillRect(cx-225, 382, 450, 3);
+  c.fillRect(cx-225, 490, 450, 3);
+  c.fillStyle = "#111"; c.font = "500 21px Arial, sans-serif"; setLS(c, 2);
+  c.fillText("MADE WITH SIMPLE INGREDIENTS,", cx, 425);
+  c.fillText("NO ARTIFICIAL FLAVORS OR COLORS", cx, 455); setLS(c, 0);
+  c.fillStyle = "#000"; c.font = "700 32px Arial, sans-serif"; setLS(c, 5);
+  c.fillText((p.Unit || "6 oz.").toUpperCase(), cx, 545); setLS(c, 0);
+
+  /* ----- right: ingredients + QR ----- */
+  const ix = 1165, colW = 265, colCx = ix + colW/2;
+  c.textAlign = "left"; c.fillStyle = "#000";
+  c.font = "700 24px Arial, sans-serif"; setLS(c, 2);
+  c.fillText("INGREDIENTS", ix, 62); setLS(c, 0);
+  c.fillStyle = col; c.fillRect(ix, 74, 46, 4);
+  c.fillStyle = "#222"; c.font = "400 20px Arial, sans-serif";
+  let iy = 108;
+  for(const line of wrapText(c, p.Ingredients, colW)){ c.fillText(line, ix, iy); iy += 26; }
+  let qsize = 118;
+  let qy = Math.max(320, iy + 14);
+  if(qy + qsize > 500){ qsize = Math.max(84, 500 - qy); }
+  if(QR.complete && QR.naturalWidth){ c.drawImage(QR, colCx - qsize/2, qy, qsize, qsize); }
+  c.fillStyle = "#000"; c.textAlign = "center";
+  c.font = "700 23px Arial, sans-serif"; setLS(c, 1);
+  c.fillText("GREYSCHEESE.COM", colCx, qy + qsize + 32); setLS(c, 0);
+
+  /* ----- far right: nutrition ----- */
+  const nut = nutritionCanvas(p);
+  const maxH = 530;
+  const scale = Math.min(1, maxH / nut.height);
+  const nw = Math.round(nut.width * scale), nh = Math.round(nut.height * scale);
+  const ny = Math.max(20, Math.round((H - 30 - nh) / 2));
+  c.drawImage(nut, 1780 - nw, ny, nw, nh);
+  c.restore();
+}
+
+/* ============ UI wiring ============ */
+function buildList(){
+  const el = $('productList'); el.innerHTML = "";
+  products.forEach((p, i) => {
+    const d = document.createElement('div');
+    d.className = "prod" + (i===cur ? " active" : "");
+    d.innerHTML = '<span class="dot"></span><span class="nm"><b></b><span></span></span>';
+    d.querySelector('.dot').style.background = p.HexColor || "#999";
+    d.querySelector('b').textContent = p.Title || "(untitled)";
+    d.querySelector('.nm span').textContent = p.Subtitle || "";
+    d.onclick = () => { cur = i; loadForm(); buildList(); };
+    el.appendChild(d);
+  });
+}
+function loadForm(){
+  const p = products[cur]; if(!p) return;
+  for(const f of FIELDS){ const el = $(f); if(el) el.value = p[f] || ""; }
+  $('HexColorPick').value = normalizeHex(p.HexColor) || "#888888";
+  if(typeof setMode === "function") setMode(p.NutriMode || "auto");
+  if(typeof showUpcWarn === "function") showUpcWarn(p.UPC);
+  draw();
+}
+function normalizeHex(h){
+  if(!h) return null;
+  h = h.trim();
+  if(/^#[0-9a-f]{6}$/i.test(h)) return h.toLowerCase();
+  if(/^#[0-9a-f]{3}$/i.test(h)) return ("#"+h[1]+h[1]+h[2]+h[2]+h[3]+h[3]).toLowerCase();
+  return null;
+}
+function draw(){
+  const p = products[cur]; if(!p) return;
+  renderLabel(ctx, p);
+}
+FIELDS.forEach(f => {
+  const el = $(f); if(!el) return;
+  el.addEventListener('input', () => {
+    products[cur][f] = el.value;
+    if(f === "HexColor"){ const n = normalizeHex(el.value); if(n) $('HexColorPick').value = n; }
+    if(f === "Title" || f === "Subtitle" || f === "HexColor") buildList();
+    if(f === "Ingredients" || f === "Title" || f === "Subtitle") renderEstInfo();
+    draw();
+  });
+});
+function renderEstInfo(){
+  const p = products[cur]; if(!p) return;
+  const box = $('estInfo');
+  const {shares, missing} = estimateShares(p);
+  if(!shares.length && !missing.length){ box.innerHTML = ""; return; }
+  const rows = shares.map(m =>
+    '<div class="ok">✓ ' + m.name + ' <span style="color:#999">→ ~' + Math.round((m.frac||0)*100) + '%</span></div>');
+  missing.forEach(n => rows.push('<div class="bad">✗ ' + n + ' — not recognized, left out of the estimate</div>'));
+  rows.push('<div class="tot">' + (isJamLike(p) ? 'Jam mode: standard preserve sugar ratio' : 'Weighted by list order') +
+    ' · serving: ' + servingGrams(p) + ' g</div>');
+  box.innerHTML = rows.join("");
+}
+function renderRecipeInfo(){
+  const p = products[cur]; if(!p) return;
+  const box = $('recipeInfo');
+  if(!String(p.Recipe||"").trim()){ box.innerHTML = ""; return; }
+  const R = parseRecipe(p.Recipe);
+  const rows = R.items.map(i => i.ok
+    ? '<div class="ok">✓ ' + i.raw.trim() + ' <span style="color:#999">→ ' + Math.round(i.grams) + ' g</span></div>'
+    : '<div class="bad">✗ ' + i.raw.trim() + ' — ' + i.msg + '</div>').join("");
+  const finished = parseWeight(p.BatchYield);
+  box.innerHTML = rows + '<div class="tot">Raw total: ' + Math.round(R.totalG) + ' g' +
+    (finished ? ' · finished: ' + Math.round(finished) + ' g' : '') +
+    ' · serving: ' + servingGrams(p) + ' g</div>';
+}
+function setMode(mode){
+  const p = products[cur]; if(p) p.NutriMode = mode;
+  $('modeAuto').checked = mode === "auto";
+  $('modeRecipe').checked = mode === "recipe";
+  $('autoPane').style.display = mode === "auto" ? "" : "none";
+  $('recipePane').style.display = mode === "recipe" ? "" : "none";
+  if(mode === "auto") renderEstInfo(); else renderRecipeInfo();
+}
+$('modeAuto').addEventListener('change', () => setMode("auto"));
+$('modeRecipe').addEventListener('change', () => setMode("recipe"));
+$('Size').addEventListener('input', () => { renderEstInfo(); renderRecipeInfo(); });
+$('Recipe').addEventListener('input', renderRecipeInfo);
+$('BatchYield').addEventListener('input', renderRecipeInfo);
+$('estBtn').onclick = () => {
+  const p = products[cur];
+  const {shares, missing} = estimateShares(p);
+  if(!shares.length){ toast("No recognizable ingredients — check the Ingredients field."); return; }
+  Object.assign(p, calcNutrition(p));
+  loadForm();
+  toast(missing.length ? "Nutrition estimated — " + missing.length + " ingredient(s) skipped (marked ✗)."
+                       : "Nutrition Facts estimated and filled.");
+};
+$('calcBtn').onclick = () => {
+  const p = products[cur];
+  const R = parseRecipe(p.Recipe);
+  if(!R.items.length){ toast("Type your recipe first — one ingredient per line."); return; }
+  const n = calcRecipe(p);
+  if(!n){ toast("No recognizable ingredients yet — check the lines marked ✗."); return; }
+  const bad = R.items.filter(i => !i.ok).length;
+  Object.assign(p, n);
+  loadForm();
+  toast(bad ? "Nutrition calculated — " + bad + " line(s) skipped (marked ✗)."
+            : "Nutrition Facts calculated from your recipe.");
+};
+function showUpcWarn(v){ $('upcWarn').textContent = upcCheckWarning(v) || ""; }
+$('UPC').addEventListener('blur', e => {
+  const n = normUPC(e.target.value);
+  e.target.value = n; products[cur].UPC = n; showUpcWarn(n); draw();
+});
+$('UPC').addEventListener('input', e => showUpcWarn(e.target.value));
+$('HexColorPick').addEventListener('input', e => {
+  products[cur].HexColor = e.target.value;
+  $('HexColor').value = e.target.value;
+  buildList(); draw();
+});
+$('addBtn').onclick = () => {
+  const base = products[cur] || {};
+  products.push({
+    Filename:"NewFlavor", Title:"New Flavor", Subtitle:"Jam", HexColor:"#a33b3b",
+    Price: base.Price || "$9.00", Unit:"6 oz.", UPC:"32020000000", Recipe:"", BatchYield:"", NutriMode:"auto",
+    Ingredients:"Fruit, Sugar, Lemon Juice, Pectin",
+    Servings:"9 servings per container", Size:"1 Tbsp (20g)", Cal:"50",
+    Fat:"0g", FatDV:"0%", SatFat:"0g", SatFatDV:"0%", TransFat:"0g",
+    Chol:"0mg", CholDV:"0%", Sod:"0mg", SodDV:"0%", Carb:"13g", CarbDV:"5%",
+    Fiber:"0g", FiberDV:"0%", Sug:"12g", AddSug:"12g", AddSugDV:"24%",
+    Prot:"0g", VitD:"0%", Calc:"0%", Iron:"0%", Potas:"0%"
+  });
+  cur = products.length - 1;
+  buildList(); loadForm();
+  toast("New product added — don’t forget “Save page” when you’re done.");
+};
+$('dupBtn').onclick = () => {
+  const copy = JSON.parse(JSON.stringify(products[cur]));
+  copy.Title += " Copy"; copy.Filename += "Copy";
+  products.splice(cur+1, 0, copy); cur++;
+  buildList(); loadForm(); toast("Duplicated.");
+};
+$('delBtn').onclick = () => {
+  if(products.length <= 1){ toast("Can’t delete the last product."); return; }
+  if(!confirm("Delete “" + (products[cur].Title||"this product") + "”?")) return;
+  products.splice(cur,1); cur = Math.max(0, cur-1);
+  buildList(); loadForm(); toast("Deleted.");
+};
+function downloadURI(uri, name){
+  const a = document.createElement('a');
+  a.href = uri; a.download = name; document.body.appendChild(a); a.click(); a.remove();
+}
+function pngName(p){ return "Label_" + ((p.Filename||p.Title||"label").replace(/[^\w\- ]/g,"").trim() || "label") + ".png"; }
+$('dlBtn').onclick = () => {
+  draw();
+  downloadURI(cv.toDataURL("image/png"), pngName(products[cur]));
+  toast("Label PNG downloaded.");
+};
+$('dlAllBtn').onclick = async () => {
+  const off = document.createElement('canvas'); off.width = 1800; off.height = 600;
+  const oc = off.getContext('2d');
+  for(let i=0;i<products.length;i++){
+    renderLabel(oc, products[i]);
+    downloadURI(off.toDataURL("image/png"), pngName(products[i]));
+    await new Promise(r => setTimeout(r, 350));
+  }
+  toast("All " + products.length + " labels downloaded.");
+};
+/* ============ database (Supabase) ============ */
+const DB = {
+  url: "https://vdvtrevhqalmjwhjhjug.supabase.co",
+  key: "sb_publishable_LnlevWReed7K8cFk_f_Mxg_UywktQ5_",
+};
+let dbPass = null;
+function dbHeaders(json){
+  const h = {apikey: DB.key, Authorization: "Bearer " + DB.key};
+  if(json) h["Content-Type"] = "application/json";
+  return h;
+}
+function normalizeProducts(list){
+  list.forEach(p => {
+    if(!p.Unit) p.Unit = "6 oz.";
+    if(p.Recipe === undefined) p.Recipe = "";
+    if(p.BatchYield === undefined) p.BatchYield = "";
+    if(!p.NutriMode) p.NutriMode = "auto";
+    p.UPC = normUPC(p.UPC);
+  });
+  return list;
+}
+function setDbStatus(cls, text){
+  const el = $('dbStatus'); el.className = "chip " + cls; el.textContent = text;
+}
+async function dbLoad(){
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), 6000);
+  try{
+    const r = await fetch(DB.url + "/rest/v1/label_studio_data?id=eq.1&select=products,updated_at",
+      {headers: dbHeaders(), signal: ctrl.signal});
+    if(!r.ok) throw new Error("load failed");
+    const rows = await r.json();
+    if(!rows.length || !Array.isArray(rows[0].products)) throw new Error("no data");
+    return rows[0];
+  } finally { clearTimeout(timer); }
+}
+async function dbSave(){
+  if(dbPass === null){
+    dbPass = prompt("Enter the passcode to save to the database:");
+    if(dbPass === null) return;   // user cancelled
+  }
+  setDbStatus("", "saving…");
+  try{
+    const r = await fetch(DB.url + "/rest/v1/rpc/label_studio_save",
+      {method: "POST", headers: dbHeaders(true),
+       body: JSON.stringify({pass: dbPass, new_products: products})});
+    if(!r.ok){
+      const e = await r.json().catch(() => ({}));
+      if((e.message || "").toLowerCase().includes("passcode")){
+        dbPass = null;
+        setDbStatus("off", "● wrong passcode");
+        toast("Wrong passcode — try Save to Database again.");
+        return;
+      }
+      throw new Error(e.message || "save failed");
+    }
+    setDbStatus("on", "● database · saved");
+    toast("Saved to the database — every computer sees this now.");
+  }catch(err){
+    setDbStatus("off", "● save failed");
+    toast("Couldn't reach the database — check your internet, or use Backup copy.");
+  }
+}
+$('dbSaveBtn').onclick = dbSave;
+
+$('saveBtn').onclick = () => {
+  document.getElementById('productData').textContent =
+    JSON.stringify(products, null, 1).replace(/</g, "\\u003c");
+  const html = "<!DOCTYPE html>\n" + document.documentElement.outerHTML;
+  const blob = new Blob([html], {type:"text/html"});
+  const url = URL.createObjectURL(blob);
+  downloadURI(url, "jam-label-studio.html");
+  setTimeout(()=>URL.revokeObjectURL(url), 5000);
+  toast("Saved! Replace your old jam-label-studio.html with the downloaded copy.");
+};
+
+/* ============ boot ============ */
+async function boot(){
+  try{ await document.fonts.load("100px TitleFont"); await document.fonts.load("700 100px LeagueSpartan"); }catch(e){}
+  if(!QR.complete){ await new Promise(r => { QR.onload = r; QR.onerror = r; }); }
+  try{
+    const row = await dbLoad();
+    products = normalizeProducts(row.products);
+    cur = 0;
+    const when = row.updated_at ? new Date(row.updated_at).toLocaleString() : "";
+    setDbStatus("on", "● database · " + (when || "connected"));
+  }catch(e){
+    setDbStatus("off", "● offline · built-in copy");
+  }
+  buildList(); loadForm();
+}
+boot();
+</script>
+</body>
+</html>
